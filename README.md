@@ -3,7 +3,11 @@ Demonstrate pictures and let you select in your browser conveniently
 
 ## 中文(ZH-CN)
 - [中文文档](README_zh_cn.md)  
-
+  
+## Usage
+- Delete pictures conveniently
+- Mark large amounts of images conveniently
+  
 ## Description
 This Python script processes images from a specified directory, groups them by template names, and generates HTML files to visualize the images. Users can select images using checkboxes and save the selected image paths to a text file. The script supports batch processing and creates multiple HTML files if the number of images exceeds a specified threshold.
 
