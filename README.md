@@ -19,4 +19,9 @@ This Python script processes images from a specified directory, groups them by t
 
 ## Demo
 A demo of the tool can be viewed in action:
+
+# Saving as txt
 ![Demo GIF](GIF_1.gif)
+
+# Loading from txt
+![Demo GIF](GIF_2.gif)
