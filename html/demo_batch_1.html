@@ -1,0 +1,445 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Image Gallery</title>
+        <style>
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+            }
+            th, td {
+                border: 1px solid black;
+                padding: 7px;
+                text-align: center;
+            }
+            img {
+                max-width: 200px;
+                max-height: 200px;
+                margin: 5px;
+                cursor: pointer;
+            }
+            .checkbox-container {
+                display: inline-block;
+                align-items: center;
+                cursor: pointer;
+                position: relative;
+                border: 2px solid transparent; /* 默认边框透明 */
+            }
+            .checkbox-container input {
+                margin-right: 5px;
+            }
+            .checkbox-container input:checked + img {
+                border: 2px solid red; /* 选中时边框为红色 */
+            }
+            .selection-box {
+                border: 1px dashed #000;
+                position: absolute;
+                z-index: 1000;
+                background: rgba(0, 0, 0, 0.1);
+            }
+            .top-right-button {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                padding: 10px 20px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            .top-left-button {
+                position: fixed;
+                top: 10px;
+                left: 10px;
+                padding: 10px 20px;
+                background-color: red;
+                color: white;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            .src-image {
+                width: 800px;
+                height: 800px;
+                margin: 5px;
+                cursor: pointer;
+            }
+            .highlight {
+                border: 2px solid red; /* 高亮时边框为红色 */
+            }
+        </style>
+        <script>
+            let isSelecting = false;
+            let startX, startY;
+            let selectionBox;
+            let checkboxes = [];
+
+            document.addEventListener('DOMContentLoaded', (event) => {
+                const containers = document.querySelectorAll('.checkbox-container');
+
+                containers.forEach(container => {
+                    container.addEventListener('click', (e) => {
+                        if (!isSelecting) {
+                            toggleCheckbox(container);
+                        }
+                    });
+                });
+
+                document.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('checkbox-container') || e.target.closest('.checkbox-container')) {
+                        isSelecting = true;
+                        startX = e.pageX;
+                        startY = e.pageY;
+                        selectionBox = document.createElement('div');
+                        selectionBox.className = 'selection-box';
+                        selectionBox.style.left = startX + 'px';
+                        selectionBox.style.top = startY + 'px';
+                        document.body.appendChild(selectionBox);
+                        checkboxes = Array.from(containers).map(container => container.querySelector('input[type="checkbox"]'));
+                    }
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (isSelecting) {
+                        const currentX = e.pageX;
+                        const currentY = e.pageY;
+                        const width = Math.abs(currentX - startX);
+                        const height = Math.abs(currentY - startY);
+                        selectionBox.style.width = width + 'px';
+                        selectionBox.style.height = height + 'px';
+                        selectionBox.style.left = Math.min(startX, currentX) + 'px';
+                        selectionBox.style.top = Math.min(startY, currentY) + 'px';
+                    }
+                });
+
+                document.addEventListener('mouseup', (e) => {
+                    if (isSelecting) {
+                        isSelecting = false;
+                        const rect = selectionBox.getBoundingClientRect();
+                        checkboxes.forEach(checkbox => {
+                            const boxRect = checkbox.closest('.checkbox-container').getBoundingClientRect();
+                            if (
+                                boxRect.left < rect.right &&
+                                boxRect.right > rect.left &&
+                                boxRect.top < rect.bottom &&
+                                boxRect.bottom > rect.top
+                            ) {
+                                checkbox.checked = !checkbox.checked;
+                                updateCheckboxStyle(checkbox);
+                            }
+                        });
+                        selectionBox.parentNode.removeChild(selectionBox);
+                    }
+                });
+
+                document.getElementById('save-button').addEventListener('click', saveSelectedImages);
+                document.getElementById('load-button').addEventListener('click', loadSelectedTxt);
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 's') {
+                        e.preventDefault();
+                        saveSelectedImages();
+                    }
+                    if (e.ctrlKey && e.key === 'l') {
+                        e.preventDefault();
+                        loadSelectedTxt();
+                    }
+                });
+            });
+
+            function toggleCheckbox(container) {
+                const checkbox = container.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+                updateCheckboxStyle(checkbox);
+            }
+
+            function updateCheckboxStyle(checkbox) {
+                const container = checkbox.closest('.checkbox-container');
+                if (checkbox.checked) {
+                    container.style.border = '2px solid red';
+                } else {
+                    container.style.border = '2px solid transparent';
+                }
+            }
+
+
+            function saveSelectedImages() {
+                const selectedImages = [];
+                const checkboxes = document.querySelectorAll('.checkbox-container input[type="checkbox"]:checked');
+                checkboxes.forEach(checkbox => {
+                    const img = checkbox.nextElementSibling;
+                    const imgUrl = img.src;
+
+                    // 获取当前页面的基本 URL (协议 + 主机名 + 端口号)
+                    const baseUrl = window.location.origin;
+
+                    // 使用 baseUrl 来计算相对路径
+                    const relativePath = imgUrl.replace(baseUrl + '/', '');
+
+                    selectedImages.push(relativePath);
+                });
+
+
+                const blob = new Blob([selectedImages.join('\n')], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'selected_images_batch_1.txt';
+                document.body.appendChild(a);
+                a.click();
+                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+
+            function loadSelectedTxt() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.txt';
+                input.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const lines = event.target.result.split('\n');
+                            const containers = document.querySelectorAll('.checkbox-container');
+                            containers.forEach(container => {
+                                const img = container.querySelector('img');
+                                const imgSrc = img.src;
+                                const imgName = imgSrc.substring(imgSrc.lastIndexOf('/') + 1);
+                                
+                                lines.forEach(line => {
+                                    const lineName = line.substring(line.lastIndexOf('/') + 1);
+                                    if (imgName === lineName) {
+                                        const checkbox = container.querySelector('input[type="checkbox"]');
+                                        checkbox.checked = true;
+                                        updateCheckboxStyle(checkbox);
+                                    }
+                                });
+                            });
+                        };
+                        reader.readAsText(file);
+                    }
+                });
+                input.click();
+            }
+        </script>
+    </head>
+    <body>
+        <button id="save-button" class="top-right-button">Save Selected Images</button>
+        <button id="load-button" class="top-left-button">Load Selected Info</button>
+        <table>
+            <tr>
+                <th>Template</th>
+                <th>Images</th>
+                <th>Source Images</th>
+            </tr>
+            <tr><td>1</td><td>
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_000.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_004.png" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_006.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_007.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_013.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_015.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_016.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_059.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_064.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_069.jpg" alt="1">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_1/origin_1_071.jpg" alt="1">
+            </div>
+            </td><td><img src="../data/src/origin_1.jpeg" alt="source_image" class="src-image"></td></tr><tr><td>2</td><td>
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_2/origin_2_000.jpg" alt="2">
+            </div>
+            </td><td><img src="../data/src/origin_2.jpg" alt="source_image" class="src-image"></td></tr><tr><td>3</td><td>
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_001.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_002.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_003.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_005.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_006.jpeg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_007.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_008.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_010.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_011.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_013.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_014.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_015.jpg" alt="3">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_3/origin_3_016.jpg" alt="3">
+            </div>
+            </td><td><img src="../data/src/origin_3.jpg" alt="source_image" class="src-image"></td></tr><tr><td>5</td><td>
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_000.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_003.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_015.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_016.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_022.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_032.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_039.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_040.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_042.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_044.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_047.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_050.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_059.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_061.jpg" alt="5">
+            </div>
+            
+            <div class="checkbox-container" onclick="toggleCheckbox(this);">
+                <input type="checkbox">
+                <img src="../data/leaf/origin_5/origin_5_062.jpg" alt="5">
+            </div>
+            </td><td><img src="../data/src/origin_5.jpg" alt="source_image" class="src-image"></td></tr>
+        </table>
+    </body>
+    </html>
+    
